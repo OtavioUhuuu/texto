@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator de Palavras-Chave</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+        :root {
+            --cor-destaque: #ED145B;
+            --cor-gradiente-preto: linear-gradient(113deg, #000 0%, #1E2021 44.96%, #1E2022 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            box-sizing: border-box; /* Adicionado para facilitar o layout */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px 21px 18px 21px;
+            background: var(--cor-gradiente-preto);
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            width: 90%; /* Ajustado para melhor responsividade */
+            max-width: 65rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 3rem;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--cor-destaque);
+            text-align: center;
+            font-size: clamp(1.8rem, 5vw, 2.8rem); /* Ajustado para ser responsivo */
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        #entrada-de-texto {
+            display: flex;
+            min-height: 12rem;
+            padding: 1.4rem 2.5rem;
+            align-items: flex-start;
+            align-self: stretch;
+            border-radius: 0.625rem;
+            background: #FFF;
+            font-size: clamp(1rem, 2vw, 2rem);
+            width: 100%;
+            resize: vertical;
+        }
+
+        #entrada-de-texto::placeholder {
+            color: #828282;
+            font-size: clamp(1rem, 2vw, 2rem);
+            font-weight: 400;
+        }
+
+        #botao-palavrachave {
+            display: flex;
+            padding: 1.25rem 2.5rem;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.5rem;
+            border: none;
+            background: var(--cor-destaque);
+            color: #000;
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #botao-palavrachave:hover {
+            background: #FF4D8E; 
+        }
+
+        #resultado-palavrachave {
+            display: flex;
+            border-radius: 0.625rem;
+            align-self: stretch;
+            color: var(--cor-destaque);
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            justify-content: center;
+            margin-bottom: 2rem;
+            max-width: 100%;
+            max-height: 50vh;
+            overflow: auto;
+            text-align: center;
+            word-wrap: break-word; /* Para garantir que palavras longas quebrem */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Extrator de palavras-chave</h1>
+        <textarea id="entrada-de-texto" placeholder="Digite ou cole seu texto aqui..."></textarea>
+        <button id="botao-palavrachave">Extrair</button>
+        <div id="resultado-palavrachave"></div>
+    </div>
+
+    <script>
+        // PALAVRAS_RUINS (Stopwords)
+        const PALAVRAS_RUINS = new Set([
+            "fosse", "nossa", "como", "estivemos", "tua", "estamos", "esteve", "nós", "teus", "meus",
+            "uma", "pela", "estava", "num", "embora", "aquela", "essas", "inclusive", "porque", "com",
+            "dele", "quanto", "aquelas", "meu", "antes", "dela", "mais", "estavam", "não", "essa",
+            "dos", "quando", "em", "aquilo", "minha", "sobre", "minhas", "numa", "estou", "ou",
+            "vos", "tenho", "ela", "nossos", "estiveram", "também", "pelas", "mesmo", "aqueles", "para",
+            "das", "entretanto", "essas", "meus", "não", "suas", "meu", "ser", "desde", "havia",
+            "tuas", "será", "meus", "meu", "com", "você", "qual", "pelo", "quem", "estávamos",
+            "essa", "nossa", "entretanto", "meu", "pelos", "esta", "meus", "meu", "minha", "tinha",
+            "apesar", "portanto", "meus", "estava", "foi", "meu", "mais", "seu", "estive", "seja",
+            "dele", "ele", "delas", "entre", "têm", "esses", "suas", "com", "não", "que",
+            "essas", "seus", "essa", "ele", "ou", "meus", "estão", "que", "aquela", "nosso",
+            "estas", "diante", "ele", "estava", "das", "inclusive", "tenho", "pelas", "essa", "numa",
+            "este", "das", "aquelas", "também", "foi", "aqueles", "teu", "não", "além", "com",
+            "aos", "ela", "está", "essas", "estavam", "lhe", "sua", "teus", "você", "suas",
+            "não", "minhas", "quem", "estão", "como", "apenas", "num", "por", "que", "entre",
+            "minha", "também", "deles", "onde", "esse", "com", "têm", "mas", "não", "estas",
+            "foi", "ele", "por", "minha", "seu", "com", "porque", "aquilo", "aquela", "estavam",
+            "até", "depois", "junto", "este", "delas", "contudo", "vos", "não"
+        ]);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const botaoMostraPalavras = document.querySelector('#botao-palavrachave');
+            botaoMostraPalavras.addEventListener('click', mostraPalavrasChave);
+        });
+
+        function mostraPalavrasChave() {
+            const texto = document.querySelector('#entrada-de-texto').value;
+            const campoResultado = document.querySelector('#resultado-palavrachave');
+            const palavrasChave = processaTexto(texto);
+
+            // Verifica se há resultados antes de juntar
+            if (palavrasChave.length > 0) {
+                campoResultado.textContent = palavrasChave.join(", ");
+            } else {
+                campoResultado.textContent = "Nenhuma palavra-chave relevante encontrada.";
+            }
+        }
+
+        function processaTexto(texto) {
+            // Divide o texto em palavras, considerando caracteres Unicode (Regex /p{L}+/u)
+            // e remove a necessidade do import do módulo 'palavrasRuins.js'
+            let palavras = texto.split(/[^a-zA-Z\u00C0-\u00FF]+/);
+
+            // Converte todas as palavras para minúsculas
+            for (let i in palavras) {
+                palavras[i] = palavras[i].toLowerCase().trim();
+            }
+
+            // Remove as stopwords e palavras vazias ou com 2 ou menos caracteres
+            palavras = tiraPalavrasRuins(palavras);
+
+            // Usa a versão otimizada da contagem de frequência (ou a sua original se preferir)
+            const frequencias = contaFrequenciasOtimizada(palavras);
+            
+            // Obtém as palavras únicas e as ordena pela frequência (do maior para o menor)
+            let ordenadas = Object.keys(frequencias).sort((p1, p2) => {
+                return frequencias[p2] - frequencias[p1]; // Ordenação decrescente
+            });
+
+            // Retorna as 10 palavras mais frequentes
+            return ordenadas.slice(0, 10);
+        }
+
+        // Função otimizada para contar a frequência de cada palavra (mais eficiente que a aninhada)
+        function contaFrequenciasOtimizada(palavras) {
+            let frequencias = {};
+            for (let palavra of palavras) {
+                frequencias[palavra] = (frequencias[palavra] || 0) + 1;
+            }
+            return frequencias;
+        }
+
+        function tiraPalavrasRuins(palavras) {
+            const palavrasBoas = [];
+            for (let palavra of palavras) {
+                // Filtra: 1. Palavras que não estão no set de ruins E 2. Que têm mais de 2 caracteres E 3. Não são strings vazias
+                if (!PALAVRAS_RUINS.has(palavra) && palavra.length > 2 && palavra.trim() !== "") {
+                    palavrasBoas.push(palavra);
+                }
+            }
+            return palavrasBoas;
+        }
+    </script>
+</body>
+</html>
